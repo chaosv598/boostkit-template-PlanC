@@ -1,0 +1,19 @@
+# BoostKit RaBitQ · gitignore (v6.5)
+# v6.5 起 patch 治理强隔离: 不读 patch 头, 不进 build/, 一切本地构建产物一律忽略
+
+# ─── 构建产物 (apply_patch.sh 输出) ───
+/tmp/rabitq-build/
+/tmp/rabitq-*/
+*.stamp
+
+# ─── Python 临时 ───
+__pycache__/
+*.pyc
+*.pyo
+
+# ─── 编辑/IDE 临时 ───
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
