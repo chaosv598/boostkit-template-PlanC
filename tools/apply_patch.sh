@@ -78,6 +78,10 @@ cmd_apply() {
     UPSTREAM_URL=$(python3 -c "import yaml; print(yaml.safe_load(open('$MANIFEST')).get('upstream_url') or yaml.safe_load(open('$MANIFEST')).get('repo') or '')")
     local UPSTREAM_DIR="/tmp/rabitq-build/upstream"
 
+    # 兜底: git 2.35+ 检测到 upstream 仓 owner 与当前用户不一致会拒操作
+    # (常见于 /tmp 目录被 root 写过 / 跨容器场景). 加 safe.directory 一次性绕过.
+    git config --global --add safe.directory "$UPSTREAM_DIR" >/dev/null 2>&1 || true
+
     if [ ! -d "$UPSTREAM_DIR/.git" ]; then
         mkdir -p "$(dirname "$UPSTREAM_DIR")"
         echo "→ clone upstream ..."
