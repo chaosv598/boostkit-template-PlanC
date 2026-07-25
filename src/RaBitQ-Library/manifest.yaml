@@ -1,27 +1,9 @@
-# BoostKit RaBitQ · manifest 完整模板（双层 series + extras 形态）
-#
-# 形态说明 (对齐 Yocto recipe + Buildroot package/<name>/):
-#   - 顶层 (总): 上游身份 baseline (upstream_url/release/pin_commit)
-#   - series (分): 普通 patches 数组, 总是 on, 字典序 apply
-#   - extras (分): 鲲鹏特定性能优化, 每个 extra 一个子目录, 字典序 apply, 可单独开关
-#   - upstream_status 取值: Yocto 6 态
-#
-# 上游: https://github.com/VectorDB-NTU/RaBitQ-Library (NTU SIGMOD 2024)
-# 鲲鹏优化: ARM64 + NEON SIMD + FP16 + SOAR + ML 自适应 nprobe
-#
-# 用法 (单入口):
-#   bash tools/apply_patch.sh help      # 看 5 个子命令
-#   bash tools/apply_patch.sh verify    # CI 默认: lint + dry-run 双跑 + status 报表
-#   bash tools/apply_patch.sh apply     # 顺序 apply 到 /tmp/rabitq-build
-#   DISABLED_EXTRAS=neq bash tools/apply_patch.sh apply   # 运行时禁用某 extra
-
+# BoostKit RaBitQ · 双层形态 manifest 模板
+# 字段定义见 docs/schemas.md
 upstream_url: https://github.com/VectorDB-NTU/RaBitQ-Library
-release: snapshot-2026-07-25                          # 上游无稳定 tag, 用 snapshot ID
-pin_commit: 540242ea0a68926f1b827bf1f9add844f07a427b # 2026-07-19 HEAD
+release: snapshot-2026-07-25
+pin_commit: 540242ea0a68926f1b827bf1f9add844f07a427b
 
-# ─── 普通 patches (series): 总是 on, 字典序 apply ───
-# 演示用 fake series patch — 给 example.sh 加一行注释,
-# 验证 series dry-run 路 A (CI 双跑第一路).
 series:
   - id: 0001-series-fake
     file: series/0001-series-fake.patch
@@ -30,29 +12,27 @@ series:
     upstream_status: Pending
     upstream_pr: https://github.com/VectorDB-NTU/RaBitQ-Library/pull/TBD
     notes: |
-      演示用 fake series patch — 给 example.sh 加一行注释。
-      仅供 dry-run 重放验证, 上游 NTU 真实 PR 链接待填。
-      业务约束: patch 文件不被 lint/CI/脚本读取 (本目录 metadata 是 single source of truth)。
+      演示用 series patch — 给 example.sh 加一行注释，验证 dry-run 路 A。
+      上游 NTU 真实 PR 链接待填。
 
-# ─── 鲲鹏性能优化 (extras): 可开关, 每个 extra 一个子目录 ───
 extras:
-  - extra_id: neq                                       # was: name
+  - extra_id: neq
     title: 鲲鹏非等价索引优化
-    self_contained: false                                # 依赖下游编译环境 + 上游基础库, 非纯 upstream 上可重放
-    author: codesheepchen@huawei.com                    # was: owner
+    self_contained: false
+    author: codesheepchen@huawei.com
     date: 2026-02-06
     upstream:
-      upstream_status: Inappropriate                    # was: status
+      upstream_status: Inappropriate
       notes: |
         鲲鹏非等价索引优化 (neq): 引入 FP16 精度 + NEON SIMD 向量化
         + 汇编级 LUT 加速, 提升 ARM64 上非等价索引场景性能。
         上游 NTU 仅支持 x86_64 AVX2, 鲲鹏特定 NEON 优化上游不收。
-    files:                                              # was: patches
-      - file: extras/neq/0001-neon-simd.patch            # was: path
+    files:
+      - file: extras/neq/0001-neon-simd.patch
 
   - extra_id: eqv
     title: 鲲鹏等价索引优化
-    self_contained: false                                # 同 neq, 非纯 upstream 上可重放
+    self_contained: false
     author: codesheepchen@huawei.com
     date: 2026-02-25
     upstream:
@@ -63,8 +43,3 @@ extras:
         强依赖鲲鹏硬件特性, 上游不收。
     files:
       - file: extras/eqv/0001-soar.patch
-
-# 关键约束:
-#   1. release 字段禁止写 main/develop/master 等分支名
-#   2. extras 字段说明见 schemas.md §2.2 (self_contained=false 表示默认 apply 跳过)
-#   3. 跨 extras 引用必须用 series:<id> 前缀 (本仓 series=空, 暂无跨层依赖)
