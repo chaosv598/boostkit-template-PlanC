@@ -38,7 +38,6 @@ series:
 extras:
   - extra_id: neq                                       # was: name
     title: 鲲鹏非等价索引优化
-    enabled: true
     self_contained: false                                # 依赖下游编译环境 + 上游基础库, 非纯 upstream 上可重放
     author: codesheepchen@huawei.com                    # was: owner
     date: 2026-02-06
@@ -53,7 +52,6 @@ extras:
 
   - extra_id: eqv
     title: 鲲鹏等价索引优化
-    enabled: true
     self_contained: false                                # 同 neq, 非纯 upstream 上可重放
     author: codesheepchen@huawei.com
     date: 2026-02-25

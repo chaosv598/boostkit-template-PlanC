@@ -1,6 +1,6 @@
 # Schema
 
-> **manifest 是 patch 元数据单一权威**。`series[]`（总是 on）+ `extras[]`（可开关）。CI 双跑验可重放。编译由各仓自带脚本负责。
+> **manifest 是 patch 元数据单一权威**。`series[]`（总是 on）+ `extras[]`（按 self_contained 单开关决定是否裸跑）。CI 双跑验可重放。编译由各仓自带脚本负责。
 
 ## 目录
 
@@ -39,18 +39,19 @@ boostkit-rabitq/
 | `depends_on` | 否 | `series:<id>` 或 `<id>`；DFS 环检测；**不允许引用 extras** |
 | `conflicts_with` | 否 | list[string] |
 
-## 3. extras[]（鲲鹏性能优化 · 可开关 · 每 extra 一个子目录）
+## 3. extras[]（鲲鹏性能优化 · 每 extra 一个子目录）
 
 | 字段 | 必填 | 备注 |
 |------|:--:|------|
 | `extra_id` | 是 | kebab-case；子目录名 = extra_id |
 | `title` | 是 | |
-| `enabled` | 是 | `true` 默认应用；`false` 默认禁用；`DISABLED_EXTRAS=neq,eqv` env 覆盖 |
 | `self_contained` | 是 | `true`=纯 upstream 可重放（CI 默认 apply）；`false`=依赖下游 build（CI 默认跳过，`BOOTSTRAP_NON_BUILDABLE=1` 强制包含） |
 | `author` / `date` | 是 | |
 | `upstream.upstream_status` | 是 | 6 态 enum；**patch 级不独立 status** |
 | `upstream.notes` / `upstream_pr` / `upstream.merged_commit` | 条件 | 同 series |
 | `files[]` | 是 | `[ {file: extras/<id>/0001-*.patch}, ... ]`，字典序 apply |
+
+**运行时禁用某 extra**：`DISABLED_EXTRAS=neq,eqv` env 覆盖（无视 self_contained）。
 
 **extras 之间禁止相互依赖**。
 

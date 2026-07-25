@@ -5,11 +5,11 @@
 #   bash tools/apply_patch.sh help                # 帮助 (默认)
 #   bash tools/apply_patch.sh verify              # CI 默认: lint + 双跑 dry-run + status
 #   bash tools/apply_patch.sh lint                # 只 lint manifest
-#   bash tools/apply_patch.sh apply               # 真 apply series + enabled extras 到 /tmp/rabitq-build
+#   bash tools/apply_patch.sh apply               # 真 apply series + self_contained extras 到 /tmp/rabitq-build
 #   bash tools/apply_patch.sh apply-layer <id>    # 单层: series<id> 或 extra<extra_id>
 #
 # env:
-#   DISABLED_EXTRAS=neq,eqv           运行时禁用某 extra (覆盖 enabled: true)
+#   DISABLED_EXTRAS=neq,eqv           运行时禁用某 extra (覆盖 self_contained: true)
 #   BOOTSTRAP_NON_BUILDABLE=1         强制 include self_contained=false 的 extra
 #                                      (默认 dry-run/apply 会自动跳过非 self_contained extra,
 #                                       它们依赖下游编译环境 / 上游 build 链 / CI 服务)
@@ -26,7 +26,7 @@
 #
 # 注: 样板只管 patch 元数据 + patch 可重放, 不掺合编译.
 # 真编译由各上游仓库 (VectorDB-NTU/RaBitQ-Library) 自带 build.sh 负责
-# (见 docs/schemas.md §10 治理边界).
+# (见 docs/schemas.md §9 治理边界).
 
 set -e
 set -o pipefail
@@ -201,7 +201,7 @@ cmd_apply_layer() {
         if python3 -c "import yaml,sys; m=yaml.safe_load(open('$mf')); sys.exit(0 if any(e.get('extra_id')=='$target' for e in m.get('extras',[])) else 1)"; then
             # 命中 extra: 反向 DISABLED_EXTRAS
             local others
-            others=$(python3 -c "import yaml; m=yaml.safe_load(open('$mf')); print(','.join(e['extra_id'] for e in m.get('extras',[]) if e.get('extra_id')!='$target' and e.get('enabled',True)))")
+            others=$(python3 -c "import yaml; m=yaml.safe_load(open('$mf')); print(','.join(e['extra_id'] for e in m.get('extras',[]) if e.get('extra_id')!=''$target''))")
             echo "→ apply-layer extra=$target, disable others: $others"
             DISABLED_EXTRAS="$others" cmd_apply "$mf" extras || return 1
         else
@@ -212,7 +212,7 @@ cmd_apply_layer() {
     done < <(discover_manifests)
 }
 
-# 子命令: apply (series + enabled extras)
+# 子命令: apply (series + self_contained extras)
 cmd_apply_real() {
     while read -r mf; do
         [ -z "$mf" ] && continue
@@ -232,11 +232,11 @@ Commands:
   help                帮助 (默认)
   verify              CI 默认: lint + 双跑 dry-run + status
   lint                只 lint src/*/manifest.yaml
-  apply               apply series + enabled extras 到 /tmp/rabitq-build
+  apply               apply series + self_contained extras 到 /tmp/rabitq-build
   apply-layer <id>    单层: series<id> 或 extra<extra_id>
 
 环境:
-  DISABLED_EXTRAS=neq,eqv           运行时禁用某 extra (覆盖 enabled: true)
+  DISABLED_EXTRAS=neq,eqv           运行时禁用某 extra (覆盖 self_contained: true)
   BOOTSTRAP_NON_BUILDABLE=1         强制 apply self_contained=false 的 extra
                                     (默认跳过 — 它们依赖下游编译/上游 build 链/CI 服务)
 

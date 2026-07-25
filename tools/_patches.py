@@ -87,11 +87,9 @@ def _iter_patches(manifest: dict):
                 extra_id = extra.get("extra_id", "")
                 if extra_id in disabled:
                     continue
-                if not extra.get("enabled", True):
-                    continue
-                # self_contained gate (v6.5)
+                # self_contained 单 gate: false 默认跳过 (依赖下游 build)
                 if not bootstrap and not extra.get("self_contained", False):
-                    continue  # 跳过非自主构建 extra (默认 dry-run/apply 行为)
+                    continue
                 for f in extra.get("files") or []:
                     yield (f"extra:{extra_id}:{f['file']}", f["file"])
 
@@ -139,20 +137,19 @@ def cmd_summary(manifest_path: Path) -> int:
 
     print()
     disabled = _disabled_extras()
-    enabled_count = sum(1 for e in extras if e.get("enabled", True) and e.get("extra_id") not in disabled)
-    print(f"[extras] {len(extras)} total, {enabled_count} enabled, {len(extras) - enabled_count} disabled")
+    sc_count = sum(1 for e in extras if e.get("self_contained", False) and e.get("extra_id") not in disabled)
+    print(f"[extras] {len(extras)} total, {sc_count} self_contained, {len(extras) - sc_count} non-self_contained")
     bootstrap = os.environ.get("BOOTSTRAP_NON_BUILDABLE", "").strip() == "1"
     n_buildable = 0
     for e in extras:
         extra_id = e.get("extra_id", "?")
         is_disabled = extra_id in disabled
-        is_off = not e.get("enabled", True)
         sc = e.get("self_contained", False)
-        if not is_disabled and not is_off and sc and not bootstrap:
+        if not is_disabled and sc and not bootstrap:
             n_buildable += 1
         files = e.get("files") or []
-        # 状态标记: OFF (禁用) / SKIP (非 self_contained) / BOOT (force include) / ON (正常)
-        if is_off or is_disabled:
+        # 状态标记: OFF (运行时禁用) / SKIP (非 self_contained) / BOOT (force include) / ON (正常)
+        if is_disabled:
             marker = "OFF"
         elif not sc:
             marker = "BOOT" if bootstrap else "SKIP"

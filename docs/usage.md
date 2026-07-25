@@ -8,7 +8,7 @@
 |------|------|
 | `verify` | CI 默认：lint + 双跑 dry-run + status |
 | `lint` | 只校验 manifest |
-| `apply` | 真 apply series + enabled extras 到 `/tmp/rabitq-build` |
+| `apply` | 真 apply series + self_contained extras 到 `/tmp/rabitq-build` |
 | `apply-layer <id>` | 单层命中：`series<id>` 或 `extra<extra_id>` |
 | `help` | 帮助（默认行为） |
 
@@ -16,7 +16,7 @@
 
 | 变量 | 作用 |
 |------|------|
-| `DISABLED_EXTRAS=neq,eqv` | 运行时禁用某 extra（覆盖 `enabled: true`） |
+| `DISABLED_EXTRAS=neq,eqv` | 运行时禁用某 extra（覆盖 `self_contained: true`） |
 | `BOOTSTRAP_NON_BUILDABLE=1` | 强制 include `self_contained: false` 的 extra |
 | `DRY_RUN=1` | apply 时只 `--check` / `--dry-run` |
 

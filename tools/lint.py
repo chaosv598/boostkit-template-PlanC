@@ -13,7 +13,7 @@ lint —— BoostKit RaBitQ patch 仓统一 lint (v6.5 · 双层形态 · manife
 校验矩阵 (v6.5):
   ✓ manifest 顶层: upstream_url / release (非分支名) / pin_commit (40-char SHA)
   ✓ series[].id / file / author / date / upstream_status / notes
-  ✓ extras[].extra_id (kebab-case) / title / enabled / upstream.status
+  ✓ extras[].extra_id (kebab-case) / title / self_contained / upstream.status
   ✓ extras[].files[].file 存在性
   ✓ series 字典序 + extras[].files 字典序
   ✓ depends_on 完整性 (仅引用 series id) + 环检测
@@ -357,14 +357,7 @@ def _lint_extra_block(e: dict, idx: int, mf: Path, mf_dir: Path) -> list[str]:
     if not _s(e.get("title")):
         errs.append(f"{prefix}: 缺 title 字段")
 
-    # enabled: 必填 (bool)
-    enabled = e.get("enabled")
-    if enabled is None:
-        errs.append(f"{prefix}: 缺 enabled 字段 (true / false)")
-    elif not isinstance(enabled, bool):
-        errs.append(f"{prefix}: enabled={enabled!r} 不是 bool")
-
-    # self_contained: 必填 (bool) — v6.5
+    # self_contained: 必填 (bool) — 单开关代替旧 enabled 字段
     # true  = 此 extra 是纯 upstream 上可重放的独立补丁 (CI 默认 apply/dry-run)
     # false = 此 extra 依赖下游编译环境 / 上游 build 工具链 / CI 服务等,
     #         apply_patch.sh 默认跳过它, 避免 dry-run 误报失败;
@@ -777,9 +770,9 @@ def _status_v65(mf: Path, data: dict) -> int:
 
     # 汇总
     total = len(series) + sum(len(e.get("files") or []) for e in extras if isinstance(e, dict))
-    enabled = sum(1 for e in extras if isinstance(e, dict) and e.get("enabled", True))
+    sc = sum(1 for e in extras if isinstance(e, dict) and e.get("self_contained", False))
     print(f"\n汇总: {len(series)} series entries + {len(extras)} extras "
-          f"({enabled} enabled) = {total} patch, {len(by_status) + len(by_status_e)} 种 upstream_status")
+          f"({sc} self_contained) = {total} patch, {len(by_status) + len(by_status_e)} 种 upstream_status")
     return 0
 
 
