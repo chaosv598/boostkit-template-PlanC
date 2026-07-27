@@ -38,7 +38,7 @@ boostkit-rabitq/
 | `notes` | `notes` | **同 series** | 条件 | Inappropriate/Denied/Backport 必填，≥10 字符 |
 | `upstream_pr` | `upstream_pr` | **同 series** | 条件 | Pending/Submitted 必填（URL） |
 | `merged_commit` | `merged_commit` | **同 series** | 条件 | Accepted 必填（40-char SHA） |
-| `depends_on` ⁴ | `depends_on` | — | 否 | 仅 series；extras 禁止 |
+| `depends_on` | — | — | — | **已删除**（apply 顺序由 manifest 声明顺序 + `0001-` 字典序编号控制，无声明依赖字段） |
 | `title` ¹ | — | `title` | 是（extras） | 人类可读描述 |
 | `self_contained` ¹ | — | `self_contained` | 是（extras） | 详见下方 |
 
@@ -49,10 +49,7 @@ boostkit-rabitq/
   - series：`file: series/0001-x.patch`（单文件 string）
   - extras：`files: [{file: extras/neq/0001-x.patch}, ...]`（多文件 list，字典序 apply）
 - **³ extras 字段在 `upstream.` 嵌套块下**：extras 的 `upstream_status` / `notes` / `upstream_pr` / `merged_commit` 字段写在 `upstream:` 子块里（语义和 series 完全相同）。**extras patch 无独立 status**——继承所属 extra 的 `upstream.upstream_status`。
-- **⁴ 依赖关系**：series 允许 `depends_on`（仅引用其他 series `id`，lint 校验完整性 + DFS 环检测）。**extras 禁止任何依赖**（extras 之间互不影响，也不引用 series）。**apply 顺序仍由 manifest 声明顺序决定**——`depends_on` 是 lint-time 防线，不做拓扑排序。
-  - 业务约束：如果 patch B 逻辑上必须先 apply patch A，**必须在 manifest 里把 A 排在 B 前面**（用 `0001-` `0002-` 编号控制）。
-  - 写错顺序 / 写错编号 → `bash tools/apply_patch.sh lint` 早期发现。
-  - 反例（仅 lint-time 拦截）：声明 `0003-c: depends_on: [0001-a]` 但 manifest 里 0003-c 排在 0001-a 之前 → lint 不会报错（DFS 只查环，不查顺序），但 apply 会按声明顺序先跑 0003-c。这是**故意的取舍**——不做拓扑排序 = 保留 Buildroot 风字典序 = `0001-` 编号语义不被破坏。
+- **apply 顺序**：完全由 manifest 声明顺序 + 文件名 `0001-` `0002-` 字典序决定（与 Buildroot / OpenWrt / Yocto 业界惯例一致）。**无 `depends_on` 字段**——逻辑先后靠编号控制。
 
 **`self_contained` 语义**：
 
@@ -83,7 +80,7 @@ series:
     notes: |                                  # Pending 不要求 notes；这里演示多行写法
       演示用 series patch — 给 example.sh 加一行注释, 验证 dry-run 路 A。
       上游 NTU 真实 PR 链接待填。
-    # depends_on: [0002-other-series]        # 可选; list of series id; lint-time 检查 (apply 仍字典序)
+    # (apply 顺序由 manifest 声明顺序决定; 用 0001- 编号控制逻辑先后)
 ```
 
 **extras[] entry**（鲲鹏特定 extra · 每 extra 一个子目录）：

@@ -16,7 +16,7 @@ lint —— BoostKit RaBitQ patch 仓统一 lint (v6.5 · 双层形态 · manife
   ✓ extras[].extra_id (kebab-case) / title / self_contained / upstream.status
   ✓ extras[].files[].file 存在性
   ✓ series 字典序 + extras[].files 字典序
-  ✓ depends_on 完整性 (仅引用 series id) + 环检测
+  ✓ series / extras 字典序 (apply 顺序由 manifest 声明顺序 + 0001- 编号决定)
   ✗ patch 头 DEP-3 / Upstream-Status — master 下禁用, 切到备选分支
 
 向后兼容:
@@ -244,10 +244,7 @@ def _lint_dual_layer(mf: Path, data: dict) -> list[str]:
                 errs.append(f"{mf}: extras[{i}].extra_id={eid!r} 重复")
             seen_extra_ids.add(eid)
 
-    # ─── 跨层依赖 + 环检测 (二次扫描) ───
-    errs.extend(_check_dual_depends(series, extras, series_id_set, mf))
-
-    # ─── 字典序检查 ───
+    # ─── 字典序检查 (apply 顺序由 manifest 声明顺序 + 0001- 编号决定) ───
     errs.extend(_check_series_order(series, mf))
     for e in extras:
         if not isinstance(e, dict):
@@ -460,69 +457,6 @@ def _check_series_order(series: list, mf: Path) -> list[str]:
             f"    实际: {ids}\n"
             f"    应为: {sorted_ids}"
         )
-    return errs
-
-
-def _check_dual_depends(series: list, extras: list,
-                        series_id_set: set[str], mf: Path) -> list[str]:
-    """跨层依赖 + 环检测 (v6.5):
-        series<id>.depends_on = 其他 series id (optional 'series:' 前缀)
-        extra patch 无 status 字段, 也不接受 depends_on (extra 级 metadata 覆盖)
-    """
-    errs: list[str] = []
-    name_to_idx = {(_s(s.get("id"))): i for i, s in enumerate(series) if isinstance(s, dict) and _s(s.get("id"))}
-
-    # 完整性: 所有 series.depends_on 必须指向存在的 series id
-    for s in series:
-        if not isinstance(s, dict):
-            continue
-        sid = _s(s.get("id"))
-        raw_deps = s.get("depends_on")
-        if raw_deps is None:
-            deps: list[str] = []
-        elif isinstance(raw_deps, list):
-            deps = [_s(x) for x in raw_deps]
-        elif isinstance(raw_deps, str):
-            deps = [raw_deps]  # 单字符串包装 (但通常应写列表, 记下 lint)
-            errs.append(f"{mf}: series.{sid}: depends_on={raw_deps!r} 应是 list, 当前是字符串")
-        else:
-            deps = []
-            errs.append(f"{mf}: series.{sid}: depends_on 类型非法: {type(raw_deps).__name__}")
-        for d in deps:
-            d_clean = d[len("series:"):] if d.startswith("series:") else d
-            if d_clean not in name_to_idx:
-                errs.append(f"{mf}: series.{sid}: depends_on={d!r} 引用了不存在的 series id")
-
-    # 环检测 (DFS)
-    def has_cycle(start: str) -> bool:
-        seen: set[str] = set()
-        stack = [start]
-        while stack:
-            n = stack.pop()
-            if n in seen:
-                continue
-            seen.add(n)
-            cur = next((x for x in series if _s(x.get("id")) == n), None)
-            if cur is None:
-                continue
-            raw_deps = cur.get("depends_on")
-            if isinstance(raw_deps, list):
-                deps_local = [_s(x) for x in raw_deps]
-            elif isinstance(raw_deps, str):
-                deps_local = [raw_deps]
-            else:
-                deps_local = []
-            for d in deps_local:
-                d_clean = d[len("series:"):] if d.startswith("series:") else d
-                if d_clean == start:
-                    return True
-                if d_clean not in seen:
-                    stack.append(d_clean)
-        return False
-
-    for sid in name_to_idx:
-        if has_cycle(sid):
-            errs.append(f"{mf}: series.{sid}: 检测到环依赖")
     return errs
 
 
