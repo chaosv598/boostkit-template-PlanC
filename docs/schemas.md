@@ -24,36 +24,33 @@ boostkit-rabitq/
 
 > ~~`install`~~ 已废弃（编译由各仓自带脚本负责）。
 
-## 2. series[]（普通 patches · 总是 on · 字典序 apply）
+## 2. series[] + extras[] 字段对照
 
-| 字段 | 必填 | 备注 |
-|------|:--:|------|
-| `id` | 是 | kebab-case |
-| `file` | 是 | 相对 manifest 所在目录 |
-| `author` | 是 | email |
-| `date` | 是 | YYYY-MM-DD |
-| `upstream_status` | 是 | 6 态 enum（见 §4） |
-| `notes` | 条件 | Inappropriate/Denied/Backport 必填，≥10 字符 |
-| `upstream_pr` | 条件 | Pending/Submitted 必填 |
-| `merged_commit` | 条件 | Accepted 必填（40-char SHA） |
-| `depends_on` | 否 | `series:<id>` 或 `<id>`；DFS 环检测；**不允许引用 extras** |
-| `conflicts_with` | 否 | list[string] |
+| 字段 | series | extras | 必填 | 备注 |
+|------|:------:|:------:|:--:|------|
+| **entry 标识**¹ | `id` | `extra_id` | 是 | kebab-case；extras 用 `extra_id` 区分 |
+| **开关字段**² | — | `self_contained` | 是 | series 总是 on（无开关）；extras 必填，详见下方 |
+| `file` / `files[]`³ | `file` | `files[]` | 是 | 相对 manifest 目录；series 单文件 string，extras 多文件 list |
+| `title` | — | `title` | 否（extras） | series 无；extras 人类可读描述 |
+| `author` | `author` | `author` | 是 | email |
+| `date` | `date` | `date` | 是 | YYYY-MM-DD |
+| `upstream_status`⁴ | `upstream_status` | `upstream.upstream_status` | 是 | 6 态 enum（见 §4）；**extras 字段位于 `upstream.` 嵌套块** |
+| `notes` | `notes` | `upstream.notes` | 条件 | Inappropriate/Denied/Backport 必填，≥10 字符 |
+| `upstream_pr` | `upstream_pr` | `upstream.upstream_pr` | 条件 | Pending/Submitted 必填（URL） |
+| `merged_commit` | `merged_commit` | `upstream.merged_commit` | 条件 | Accepted 必填（40-char SHA） |
+| `depends_on`⁵ | `depends_on` | — | 否 | `series:<id>` 或 `<id>`；DFS 环检测；**extras 禁止** |
+| `conflicts_with` | `conflicts_with` | — | 否 | list[string]；extras 禁止 |
 
-## 3. extras[]（鲲鹏性能优化 · 每 extra 一个子目录）
+**注释**：
 
-| 字段 | 必填 | 备注 |
-|------|:--:|------|
-| `extra_id` | 是 | kebab-case；子目录名 = extra_id |
-| `title` | 是 | |
-| `self_contained` | 是 | `true`=纯 upstream 可重放（CI 默认 apply）；`false`=依赖下游 build（CI 默认跳过，`BOOTSTRAP_NON_BUILDABLE=1` 强制包含） |
-| `author` / `date` | 是 | |
-| `upstream.upstream_status` | 是 | 6 态 enum；**patch 级不独立 status** |
-| `upstream.notes` / `upstream_pr` / `upstream.merged_commit` | 条件 | 同 series |
-| `files[]` | 是 | `[ {file: extras/<id>/0001-*.patch}, ... ]`，字典序 apply |
-
-**运行时禁用某 extra**：`DISABLED_EXTRAS=neq,eqv` env 覆盖（无视 self_contained）。
-
-**extras 之间禁止相互依赖**。
+- **¹ entry 标识**：series 用 `id`，extras 用 `extra_id`（命名区分）。**`extra_id` 即子目录名**（`extras/<extra_id>/...`）。
+- **² 开关字段**：series 总是 on，无开关字段。extras **唯一开关**是 `self_contained`：
+  - `true` = 纯 upstream 可重放（CI 默认 apply）
+  - `false` = 依赖下游 build（CI 默认跳过，`BOOTSTRAP_NON_BUILDABLE=1` 强制包含）
+  - 运行时覆盖：`DISABLED_EXTRAS=neq,eqv` env（无视 `self_contained: true`）
+- **³ patch files**：series 是单个 string `file: series/0001-x.patch`；extras 是 list `files: [{file: extras/neq/0001-x.patch}, ...]`，字典序 apply。
+- **⁴ upstream_status 位置**：series 平铺在 entry 顶层；extras 在 `upstream.` 嵌套块（`upstream.upstream_status`）。**extras patch 无独立 status**，继承所属 extra 的 `upstream.upstream_status`。
+- **⁵ 依赖**：series 允许 `depends_on` / `conflicts_with`（仅引用其他 series `id`，DFS 环检测）。**extras 禁止任何依赖**（extras 之间互不影响）。
 
 ## 4. upstream_status 6 态
 
