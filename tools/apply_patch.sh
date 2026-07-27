@@ -198,14 +198,19 @@ cmd_apply_layer() {
     while read -r mf; do
         [ -z "$mf" ] && continue
         echo "## 版本: ${mf#$ROOT/}"
-        if python3 -c "import yaml,sys; m=yaml.safe_load(open('$mf')); sys.exit(0 if any(e.get('extra_id')=='$target' for e in m.get('extras',[])) else 1)"; then
-            # 命中 extra: 反向 DISABLED_EXTRAS
-            local others
-            others=$(python3 -c "import yaml; m=yaml.safe_load(open('$mf')); print(','.join(e['extra_id'] for e in m.get('extras',[]) if e.get('extra_id')!=''$target''))")
-            echo "→ apply-layer extra=$target, disable others: $others"
+        # 判定 target 是 series id 还是 extra_id, 用 _patches.py resolve-layer
+        # (避免 shell 内嵌 Python 的引号嵌套坑)
+        local resolve
+        resolve=$(python3 "$ROOT/tools/_patches.py" resolve-layer "$target" "$mf") || {
+            echo "✗ '$target' 不在 manifest (既不是 series id 也不是 extra_id)"
+            return 1
+        }
+        local kind="${resolve%% *}"        # series / extra
+        local others="${resolve#extra }"   # extra <others> → 仅在 kind=extra 时有意义
+        if [ "$kind" = "extra" ]; then
+            echo "→ apply-layer extra=$target, disable others: ${others:-(none)}"
             DISABLED_EXTRAS="$others" cmd_apply "$mf" extras || return 1
         else
-            # series<id>
             echo "→ apply-layer series=$target"
             PHASE_FLAG=series cmd_apply "$mf" || return 1
         fi
@@ -245,7 +250,7 @@ Commands:
   2. bash tools/apply_patch.sh apply        # 真 apply 到 /tmp/rabitq-build (编译由各仓自带脚本负责)
 
 注: 样板只管 patch 元数据 + patch 可重放, 不掺合编译
-   (业界依据: Buildroot / OpenWrt / Yocto 都分离 patch 治理与编译, 见 docs/schemas.md §10)
+   (业界依据: Buildroot / OpenWrt / Yocto 都分离 patch 治理与编译, 见 docs/schemas.md)
 EOF
 }
 

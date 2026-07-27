@@ -19,6 +19,12 @@ _patches.py — BoostKit 单仓 patch 列表 helper (v6.5 · 极简)
 用法:
   python3 tools/_patches.py list <manifest.yaml>
   python3 tools/_patches.py summary <manifest.yaml>
+  python3 tools/_patches.py resolve-layer <target> <manifest.yaml>
+    判定 <target> 是 series id 还是 extra_id, 打印到 stdout:
+      series          (如果命中 series)
+      extra <others>  (如果命中 extra, <others> 是其它 extra_id 逗号分隔)
+      none            (都没命中)
+    退出码: 0=命中(series 或 extra), 1=都没命中
 """
 from __future__ import annotations
 
@@ -110,6 +116,38 @@ def cmd_list(manifest_path: Path) -> int:
     return 0
 
 
+def cmd_resolve_layer(target: str, manifest_path: Path) -> int:
+    """
+    判定 <target> 是 series id 还是 extra_id.
+
+    stdout:
+      "series"               # 命中 series
+      "extra <others>"       # 命中 extra; <others> = 其它 extra_id (逗号分隔, 无则空)
+      "none"                 # 都没命中
+
+    退出码: 0 = 命中 (series 或 extra); 1 = 都没命中
+    """
+    m = _load(manifest_path)
+    is_v65 = "series" in m or "extras" in m
+    if is_v65:
+        # 优先 series (不与 extra_id 撞名)
+        for s in m.get("series") or []:
+            if s.get("id") == target:
+                print("series")
+                return 0
+        # 再判 extra
+        extras = m.get("extras") or []
+        if any(e.get("extra_id") == target for e in extras):
+            others = ",".join(
+                e["extra_id"] for e in extras
+                if e.get("extra_id") and e["extra_id"] != target
+            )
+            print(f"extra {others}")
+            return 0
+    print("none")
+    return 1
+
+
 def cmd_summary(manifest_path: Path) -> int:
     """Print human-readable summary table."""
     m = _load(manifest_path)
@@ -164,10 +202,18 @@ def cmd_summary(manifest_path: Path) -> int:
 
 
 def main() -> int:
-    if len(sys.argv) < 3 or sys.argv[1] not in ("list", "summary"):
-        print("usage: _patches.py {list|summary} <manifest.yaml>", file=sys.stderr)
+    if len(sys.argv) < 3 or sys.argv[1] not in ("list", "summary", "resolve-layer"):
+        print("usage: _patches.py {list|summary|resolve-layer} <manifest.yaml> [target]",
+              file=sys.stderr)
         return 2
-    cmd, manifest_path = sys.argv[1], Path(sys.argv[2])
+    cmd = sys.argv[1]
+    if cmd == "resolve-layer":
+        if len(sys.argv) < 4:
+            print("usage: _patches.py resolve-layer <target> <manifest.yaml>",
+                  file=sys.stderr)
+            return 2
+        return cmd_resolve_layer(sys.argv[2], Path(sys.argv[3]))
+    manifest_path = Path(sys.argv[2])
     if cmd == "list":
         return cmd_list(manifest_path)
     if cmd == "summary":
