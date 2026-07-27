@@ -26,31 +26,83 @@ boostkit-rabitq/
 
 ## 2. series[] + extras[] 字段对照
 
+> **设计原则**：extras 是 series 的**超集**。同名字段 = 同语义、同必填规则、同校验。extras 多出来的 4 个字段是 `extra_id` / `self_contained` / `title` / `files[]`，没有 series 独占字段。
+
 | 字段 | series | extras | 必填 | 备注 |
 |------|:------:|:------:|:--:|------|
-| **entry 标识**¹ | `id` | `extra_id` | 是 | kebab-case；extras 用 `extra_id` 区分 |
-| **开关字段**² | — | `self_contained` | 是 | series 总是 on（无开关）；extras 必填，详见下方 |
-| `file` / `files[]`³ | `file` | `files[]` | 是 | 相对 manifest 目录；series 单文件 string，extras 多文件 list |
-| `title` | — | `title` | 否（extras） | series 无；extras 人类可读描述 |
-| `author` | `author` | `author` | 是 | email |
-| `date` | `date` | `date` | 是 | YYYY-MM-DD |
-| `upstream_status`⁴ | `upstream_status` | `upstream.upstream_status` | 是 | 6 态 enum（见 §4）；**extras 字段位于 `upstream.` 嵌套块** |
-| `notes` | `notes` | `upstream.notes` | 条件 | Inappropriate/Denied/Backport 必填，≥10 字符 |
-| `upstream_pr` | `upstream_pr` | `upstream.upstream_pr` | 条件 | Pending/Submitted 必填（URL） |
-| `merged_commit` | `merged_commit` | `upstream.merged_commit` | 条件 | Accepted 必填（40-char SHA） |
-| `depends_on`⁵ | `depends_on` | — | 否 | `series:<id>` 或 `<id>`；DFS 环检测；**extras 禁止** |
-| `conflicts_with` | `conflicts_with` | — | 否 | list[string]；extras 禁止 |
+| `id` ¹ | ✓ | 改名为 `extra_id` | 是 | kebab-case |
+| `file` ² | `file` | 改名为 `files[]` | 是 | 详见下方 |
+| `author` | `author` | **同 series** | 是 | email |
+| `date` | `date` | **同 series** | 是 | YYYY-MM-DD |
+| `upstream_status` ³ | `upstream_status` | **同 series** | 是 | 6 态 enum（见 §4） |
+| `notes` | `notes` | **同 series** | 条件 | Inappropriate/Denied/Backport 必填，≥10 字符 |
+| `upstream_pr` | `upstream_pr` | **同 series** | 条件 | Pending/Submitted 必填（URL） |
+| `merged_commit` | `merged_commit` | **同 series** | 条件 | Accepted 必填（40-char SHA） |
+| `depends_on` ⁴ | `depends_on` | — | 否 | 仅 series；extras 禁止 |
+| `conflicts_with` ⁴ | `conflicts_with` | — | 否 | 仅 series；extras 禁止 |
+| `title` ¹ | — | `title` | 是（extras） | 人类可读描述 |
+| `self_contained` ¹ | — | `self_contained` | 是（extras） | 详见下方 |
 
 **注释**：
 
-- **¹ entry 标识**：series 用 `id`，extras 用 `extra_id`（命名区分）。**`extra_id` 即子目录名**（`extras/<extra_id>/...`）。
-- **² 开关字段**：series 总是 on，无开关字段。extras **唯一开关**是 `self_contained`：
-  - `true` = 纯 upstream 可重放（CI 默认 apply）
-  - `false` = 依赖下游 build（CI 默认跳过，`BOOTSTRAP_NON_BUILDABLE=1` 强制包含）
-  - 运行时覆盖：`DISABLED_EXTRAS=neq,eqv` env（无视 `self_contained: true`）
-- **³ patch files**：series 是单个 string `file: series/0001-x.patch`；extras 是 list `files: [{file: extras/neq/0001-x.patch}, ...]`，字典序 apply。
-- **⁴ upstream_status 位置**：series 平铺在 entry 顶层；extras 在 `upstream.` 嵌套块（`upstream.upstream_status`）。**extras patch 无独立 status**，继承所属 extra 的 `upstream.upstream_status`。
-- **⁵ 依赖**：series 允许 `depends_on` / `conflicts_with`（仅引用其他 series `id`，DFS 环检测）。**extras 禁止任何依赖**（extras 之间互不影响）。
+- **¹ extras 独有字段**：`extra_id`（同时是子目录名）、`title`、`self_contained` 是 extras 必填；series 没有。
+- **² patch files 形态不同**：
+  - series：`file: series/0001-x.patch`（单文件 string）
+  - extras：`files: [{file: extras/neq/0001-x.patch}, ...]`（多文件 list，字典序 apply）
+- **³ extras 字段在 `upstream.` 嵌套块下**：extras 的 `upstream_status` / `notes` / `upstream_pr` / `merged_commit` 字段写在 `upstream:` 子块里（语义和 series 完全相同）。**extras patch 无独立 status**——继承所属 extra 的 `upstream.upstream_status`。
+- **⁴ 依赖关系**：series 允许 `depends_on` / `conflicts_with`（仅引用其他 series `id`，DFS 环检测）。**extras 禁止任何依赖**（extras 之间互不影响，也不引用 series）。
+
+**`self_contained` 语义**：
+
+- `true` = 纯 upstream 可重放（CI 默认 apply）
+- `false` = 依赖下游 build（CI 默认跳过，`BOOTSTRAP_NON_BUILDABLE=1` 强制包含）
+- 运行时覆盖：`DISABLED_EXTRAS=neq,eqv` env（无视 `self_contained: true`）
+
+## 3. 完整 schema 示例
+
+**顶层**：
+
+```yaml
+upstream_url: https://github.com/VectorDB-NTU/RaBitQ-Library
+release: snapshot-2026-07-25                # 上游 tag 或 snapshot-YYYY-MM-DD
+pin_commit: 540242ea0a68926f1b827bf1f9add844f07a427b
+```
+
+**series[] entry**（普通 patch · 总是 on）：
+
+```yaml
+series:
+  - id: 0001-series-fake                     # kebab-case
+    file: series/0001-series-fake.patch      # 相对 manifest 目录
+    author: chaosv598@users.noreply.github.com
+    date: 2026-07-25
+    upstream_status: Pending                 # 6 态 enum
+    upstream_pr: https://github.com/VectorDB-NTU/RaBitQ-Library/pull/TBD
+    notes: |                                  # Pending 不要求 notes；这里演示多行写法
+      演示用 series patch — 给 example.sh 加一行注释, 验证 dry-run 路 A。
+      上游 NTU 真实 PR 链接待填。
+    # depends_on: 0002-other-series          # 可选; 仅引用 series 内 id
+    # conflicts_with: [0003-xxx]             # 可选
+```
+
+**extras[] entry**（鲲鹏特定 extra · 每 extra 一个子目录）：
+
+```yaml
+extras:
+  - extra_id: neq                            # 子目录名 = extras/neq/
+    title: 鲲鹏非等价索引优化
+    self_contained: false                    # 鲲鹏特定 NEON 优化, 依赖下游 build
+    author: codesheepchen@huawei.com
+    date: 2026-02-06
+    upstream:                                # ← series 的字段在这里
+      upstream_status: Inappropriate
+      notes: |
+        鲲鹏非等价索引优化 (neq): 引入 FP16 精度 + NEON SIMD 向量化
+        + 汇编级 LUT 加速, 提升 ARM64 上非等价索引场景性能。
+        上游 NTU 仅支持 x86_64 AVX2, 鲲鹏特定 NEON 优化上游不收。
+    files:                                   # ← series 的 file 在这里是 list
+      - file: extras/neq/0001-neon-simd.patch
+```
 
 ## 4. upstream_status 6 态
 
