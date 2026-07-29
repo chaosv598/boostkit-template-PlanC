@@ -48,8 +48,7 @@ boostkit-rabitq/
   - series：`file: series/0001-x.patch`（单文件 string）
   - extras：`files: [{file: extras/neq/0001-x.patch}, ...]`（多文件 list，字典序 apply）
 - **³ extras 字段在 `upstream.` 嵌套块下**：extras 的 `upstream_status` / `notes` / `upstream_pr` / `merged_commit` 字段写在 `upstream:` 子块里（语义和 series 完全相同）。**extras patch 无独立 status**——继承所属 extra 的 `upstream.upstream_status`。
-- **apply 顺序**：完全由 manifest 声明顺序 + 文件名 `0001-` `0002-` 字典序决定（与 Buildroot / OpenWrt / Yocto 业界惯例一致）。**无 `depends_on` 字段**——逻辑先后靠编号控制。
-
+- **apply 顺序**：完全由 manifest 声明顺序 + 文件名 `0001-` `0002-` 字典序决定（与 Buildroot / OpenWrt / Yocto 业界惯例一致）。
 **`self_contained` 语义**：
 
 - `true` = 纯 upstream 可重放（CI 默认 apply）
