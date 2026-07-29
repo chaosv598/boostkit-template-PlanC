@@ -38,7 +38,6 @@ boostkit-rabitq/
 | `notes` | `notes` | **同 series** | 条件 | Inappropriate/Denied/Backport 必填，≥10 字符 |
 | `upstream_pr` | `upstream_pr` | **同 series** | 条件 | Pending/Submitted 必填（URL） |
 | `merged_commit` | `merged_commit` | **同 series** | 条件 | Accepted 必填（40-char SHA） |
-| `depends_on` | — | — | — | **已删除**（apply 顺序由 manifest 声明顺序 + `0001-` 字典序编号控制，无声明依赖字段） |
 | `title` ¹ | — | `title` | 是（extras） | 人类可读描述 |
 | `self_contained` ¹ | — | `self_contained` | 是（extras） | 详见下方 |
 
