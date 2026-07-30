@@ -244,6 +244,89 @@ class PatchToolTests(unittest.TestCase):
             active.stdout,
         )
 
+    def test_ci_skip_precedes_feature_and_conflict_resolution(self) -> None:
+        skipped = patch_entry(
+            "ex01",
+            "ex01-neq.patch",
+            depend_on=["neq"],
+            conflicts_with=["ex02"],
+        )
+        skipped["ci_skip"] = True
+        skipped["skip_reason"] = "Patch requires a separate business source baseline."
+        fixture = ManifestFixture(
+            [
+                skipped,
+                patch_entry(
+                    "ex02",
+                    "ex02-eqv.patch",
+                    depend_on=["eqv"],
+                    conflicts_with=["ex01"],
+                ),
+            ]
+        )
+        self.addCleanup(fixture.close)
+
+        result = self.run_list(fixture, "neq,eqv")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ex01\tex01-neq.patch\tSKIP\tci_skip=", result.stdout)
+        self.assertIn("ex02\tex02-eqv.patch\tAPPLY\tready", result.stdout)
+
+    def test_rejects_ci_skip_without_reason(self) -> None:
+        skipped = patch_entry(
+            "ex01",
+            "ex01-neq.patch",
+            depend_on=["neq"],
+        )
+        skipped["ci_skip"] = True
+        fixture = ManifestFixture([skipped])
+        self.addCleanup(fixture.close)
+
+        result = self.run_lint(fixture)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("skip_reason", result.stdout)
+
+
+class RealTemplateLayoutTests(unittest.TestCase):
+    def test_neq_and_eqv_are_flat_mutually_exclusive_ex_patches(self) -> None:
+        version = ROOT / "src" / "RaBitQ-Library"
+        manifest = yaml.safe_load(
+            (version / "manifest.yaml").read_text(encoding="utf-8")
+        )
+        ex_patches = {
+            entry["id"]: entry
+            for entry in manifest["patches"]
+            if entry["id"].startswith("ex")
+        }
+
+        self.assertFalse((version / "extras").exists())
+        self.assertEqual(
+            {
+                patch_id: entry["file"]
+                for patch_id, entry in ex_patches.items()
+            },
+            {
+                "ex01": "ex01-neq-neon-simd.patch",
+                "ex02": "ex02-eqv-soar.patch",
+            },
+        )
+        self.assertEqual(ex_patches["ex01"]["depend_on"], ["neq"])
+        self.assertEqual(ex_patches["ex02"]["depend_on"], ["eqv"])
+        self.assertEqual(ex_patches["ex01"]["conflicts_with"], ["ex02"])
+        self.assertEqual(ex_patches["ex02"]["conflicts_with"], ["ex01"])
+        self.assertTrue(ex_patches["ex01"]["ci_skip"])
+        self.assertTrue(ex_patches["ex02"]["ci_skip"])
+
+        neq = (version / ex_patches["ex01"]["file"]).read_text(
+            encoding="utf-8"
+        )
+        eqv = (version / ex_patches["ex02"]["file"]).read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("rabitq_neq", neq)
+        self.assertIn("rabitq_eqv", eqv)
+
 
 class ApplyToolTests(unittest.TestCase):
     def setUp(self) -> None:

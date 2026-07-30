@@ -26,20 +26,27 @@ patches:
     notes: Template-only observability Patch applied after the compatibility example.
 
   - id: ex01
-    file: ex01-example-neon.patch
+    file: ex01-neq-neon-simd.patch
     author: template@boostkit.example
     date: 2026-07-30
     upstream_status: Inappropriate
-    notes: Template-only ARM64 NEON Patch used to demonstrate feature-gated application.
+    notes: NeQ implementation variant retained as a feature-gated downstream Patch.
     depend_on:
-      - arm64-neon
+      - neq
+    conflicts_with:
+      - ex02
+    ci_skip: true
+    skip_reason: Patch targets a separate RaBitQ source snapshot and cannot replay on this pin_commit.
 
   - id: ex02
-    file: ex02-example-runtime.patch
+    file: ex02-eqv-soar.patch
     author: template@boostkit.example
     date: 2026-07-30
     upstream_status: Inappropriate
-    notes: Template-only runtime Patch requiring both ARM64 NEON and Kunpeng runtime features.
+    notes: EQV implementation variant retained as a feature-gated downstream Patch.
     depend_on:
-      - arm64-neon
-      - kunpeng-runtime
+      - eqv
+    conflicts_with:
+      - ex01
+    ci_skip: true
+    skip_reason: Patch targets a separate RaBitQ source snapshot and cannot replay on this pin_commit.

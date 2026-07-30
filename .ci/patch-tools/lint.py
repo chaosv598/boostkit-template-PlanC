@@ -143,6 +143,12 @@ def validate_manifest(path: Path) -> list[str]:
         ):
             errors.append(f"{prefix}: conflicts_with 必须是字符串列表")
 
+        ci_skip = entry.get("ci_skip", False)
+        if not isinstance(ci_skip, bool):
+            errors.append(f"{prefix}: ci_skip 必须是布尔值")
+        elif ci_skip and len(text(entry.get("skip_reason"))) < 10:
+            errors.append(f"{prefix}: ci_skip=true 要求 skip_reason 至少 10 字符")
+
     if len(ids) != len(set(ids)):
         errors.append(f"{path}: Patch id 不能重复")
     if len(files) != len(set(files)):

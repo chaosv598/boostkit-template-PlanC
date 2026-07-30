@@ -39,6 +39,8 @@ src/<Upstream>-<Version>/
 | `upstream_pr` | 条件 | Pending、Submitted 必填 URL |
 | `merged_commit` | 条件 | Accepted 必填 40 字符 SHA |
 | `conflicts_with` | 否 | 已知冲突 Patch ID 列表 |
+| `ci_skip` | 否 | 布尔值；`true` 表示当前流水线不重放该 Patch |
+| `skip_reason` | 条件 | `ci_skip: true` 时必填，至少 10 字符 |
 
 ## 特殊 Patch 字段
 
@@ -46,8 +48,7 @@ src/<Upstream>-<Version>/
 
 ```yaml
 depend_on:
-  - arm64-neon
-  - kunpeng-runtime
+  - neq
 ```
 
 `depend_on` 表达业务运行前置特性，不表达 Patch 顺序：
@@ -56,6 +57,7 @@ depend_on:
 - 依赖全部满足：APPLY。
 - 任一依赖缺失：SKIP，并输出 `missing=<feature>`。
 - 普通数字 Patch 不允许声明 `depend_on`。
+- `ci_skip: true` 优先于特性与冲突判定，输出 `ci_skip=<reason>`。
 
 ## 完整示例
 
@@ -73,13 +75,17 @@ patches:
     notes: Template-only Patch used to demonstrate deterministic replay.
 
   - id: ex01
-    file: ex01-example-neon.patch
+    file: ex01-neq-neon-simd.patch
     author: template@boostkit.example
     date: 2026-07-30
     upstream_status: Inappropriate
-    notes: Template-only ARM64 Patch used to demonstrate feature gating.
+    notes: NeQ implementation variant retained as a feature-gated Patch.
     depend_on:
-      - arm64-neon
+      - neq
+    conflicts_with:
+      - ex02
+    ci_skip: true
+    skip_reason: Patch targets a separate source snapshot and cannot replay on this pin_commit.
 ```
 
 ## Upstream 状态
@@ -94,6 +100,7 @@ patches:
 
 - `conflicts_with` 只能引用当前 Manifest 中存在的 Patch ID。
 - Patch 不能与自身冲突。
+- 互斥实现应双向声明，例如 NeQ `ex01` 与 EQV `ex02` 互相引用。
 - 冲突声明错误属于 Schema 错误，CI 立即失败。
 
 ## 退出语义

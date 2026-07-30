@@ -20,7 +20,7 @@ def enabled_features() -> set[str]:
 
 def resolve(manifest: dict, selected_id: str | None = None) -> list[tuple[str, str, str, str]]:
     enabled = enabled_features()
-    candidates: list[tuple[dict, str, str, list[str]]] = []
+    candidates: list[tuple[dict, str, str, list[str], str]] = []
     for entry in manifest.get("patches", []):
         patch_id = text(entry.get("id"))
         if selected_id and patch_id != selected_id:
@@ -28,15 +28,25 @@ def resolve(manifest: dict, selected_id: str | None = None) -> list[tuple[str, s
         file_name = text(entry.get("file"))
         required = [text(item) for item in entry.get("depend_on", [])]
         missing = [feature for feature in required if feature not in enabled]
-        candidates.append((entry, patch_id, file_name, missing))
+        ci_skip_reason = (
+            text(entry.get("skip_reason"))
+            if entry.get("ci_skip") is True
+            else ""
+        )
+        candidates.append((entry, patch_id, file_name, missing, ci_skip_reason))
 
     active_ids = {
         patch_id
-        for _, patch_id, _, missing in candidates
-        if not missing
+        for _, patch_id, _, missing, ci_skip_reason in candidates
+        if not missing and not ci_skip_reason
     }
     rows: list[tuple[str, str, str, str]] = []
-    for entry, patch_id, file_name, missing in candidates:
+    for entry, patch_id, file_name, missing, ci_skip_reason in candidates:
+        if ci_skip_reason:
+            rows.append(
+                (patch_id, file_name, "SKIP", f"ci_skip={ci_skip_reason}")
+            )
+            continue
         if missing:
             rows.append((patch_id, file_name, "SKIP", f"missing={','.join(missing)}"))
             continue

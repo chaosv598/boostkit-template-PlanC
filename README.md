@@ -9,6 +9,7 @@ BoostKit Patch 统一治理模板，采用“单目录、单序列、特性门�
 - 特殊 Patch 使用 `ex01-*.patch`、`ex02-*.patch`。
 - 文件名字典序是唯一应用顺序。
 - 特殊 Patch 使用 `depend_on` 声明所需业务特性。
+- 无法在当前固定基线上重放的业务特例使用 `ci_skip: true` 和 `skip_reason` 显式跳过。
 - CI 通过 `ENABLED_FEATURES` 注入当前环境具备的特性。
 - 依赖满足时 APPLY；依赖不满足时 SKIP，并输出缺失特性。
 
@@ -55,34 +56,35 @@ bash .ci/patch-tools/apply_patch.sh lint
 bash .ci/patch-tools/apply_patch.sh verify
 ```
 
-启用特殊 Patch：
+检查特性组合：
 
 ```bash
-ENABLED_FEATURES=arm64-neon \
+ENABLED_FEATURES=neq \
   bash .ci/patch-tools/apply_patch.sh verify
 
-ENABLED_FEATURES=arm64-neon,kunpeng-runtime \
+ENABLED_FEATURES=eqv \
   bash .ci/patch-tools/apply_patch.sh verify
 ```
 
 只检查并应用一个 Patch：
 
 ```bash
-ENABLED_FEATURES=arm64-neon \
+ENABLED_FEATURES=neq \
   bash .ci/patch-tools/apply_patch.sh apply-one ex01
 ```
 
 ## 示例结果
 
-仓库内置五个可重放的 RaBitQ 假 Patch：
+仓库内置三个普通示例 Patch，并将真实 NeQ、EQV 变体平铺为两个互斥的特殊 Patch。两份业务 Patch 针对另一套源码快照，因此在当前模板 CI 中显式标记为 `ci_skip`：
 
 | 特性集合 | APPLY | SKIP |
 |---|:---:|:---:|
 | 空 | `001`、`002`、`003` | `ex01`、`ex02` |
-| `arm64-neon` | `001`、`002`、`003`、`ex01` | `ex02` |
-| `arm64-neon,kunpeng-runtime` | 全部五个 | 无 |
+| `neq` | `001`、`002`、`003` | `ex01`、`ex02`（`ci_skip`） |
+| `eqv` | `001`、`002`、`003` | `ex01`、`ex02`（`ci_skip`） |
+| `neq,eqv` | `001`、`002`、`003` | `ex01`、`ex02`（`ci_skip`） |
 
-SKIP 不等于 PASS。输出会单独列出缺失特性。
+SKIP 不等于 PASS。输出会区分 `missing=<feature>` 与 `ci_skip=<reason>`。业务完成基线适配并移除 `ci_skip` 后，NeQ/EQV 的 `conflicts_with` 才参与活动 Patch 冲突门禁。
 
 ## 文档
 
