@@ -92,6 +92,11 @@ apply_manifest() {
             skip_count=$((skip_count + 1))
             continue
         fi
+        if [ "$decision" = "FAIL" ]; then
+            echo "FAIL $patch_id $reason"
+            fail_count=$((fail_count + 1))
+            break
+        fi
         patch_file="$patch_root/$file_name"
         if git -C "$upstream_dir" apply --check "$patch_file" >/dev/null 2>&1 &&
            git -C "$upstream_dir" apply "$patch_file" >/dev/null 2>&1; then

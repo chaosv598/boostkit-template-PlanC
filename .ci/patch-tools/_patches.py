@@ -20,7 +20,7 @@ def enabled_features() -> set[str]:
 
 def resolve(manifest: dict, selected_id: str | None = None) -> list[tuple[str, str, str, str]]:
     enabled = enabled_features()
-    rows: list[tuple[str, str, str, str]] = []
+    candidates: list[tuple[dict, str, str, list[str]]] = []
     for entry in manifest.get("patches", []):
         patch_id = text(entry.get("id"))
         if selected_id and patch_id != selected_id:
@@ -28,10 +28,29 @@ def resolve(manifest: dict, selected_id: str | None = None) -> list[tuple[str, s
         file_name = text(entry.get("file"))
         required = [text(item) for item in entry.get("depend_on", [])]
         missing = [feature for feature in required if feature not in enabled]
+        candidates.append((entry, patch_id, file_name, missing))
+
+    active_ids = {
+        patch_id
+        for _, patch_id, _, missing in candidates
+        if not missing
+    }
+    rows: list[tuple[str, str, str, str]] = []
+    for entry, patch_id, file_name, missing in candidates:
         if missing:
             rows.append((patch_id, file_name, "SKIP", f"missing={','.join(missing)}"))
-        else:
-            rows.append((patch_id, file_name, "APPLY", "ready"))
+            continue
+        active_conflicts = [
+            conflict
+            for conflict in entry.get("conflicts_with", []) or []
+            if conflict in active_ids
+        ]
+        if active_conflicts:
+            rows.append(
+                (patch_id, file_name, "FAIL", f"conflict={','.join(active_conflicts)}")
+            )
+            continue
+        rows.append((patch_id, file_name, "APPLY", "ready"))
     return rows
 
 
@@ -64,10 +83,14 @@ def command_summary(path: Path) -> int:
     rows = resolve(manifest)
     apply_count = sum(1 for row in rows if row[2] == "APPLY")
     skip_count = sum(1 for row in rows if row[2] == "SKIP")
+    fail_count = sum(1 for row in rows if row[2] == "FAIL")
     for patch_id, file_name, decision, reason in rows:
         print(f"[{decision}] {patch_id} {file_name} {reason}")
-    print(f"APPLY={apply_count} SKIP={skip_count} TOTAL={len(rows)}")
-    return 0
+    print(
+        f"APPLY={apply_count} SKIP={skip_count} "
+        f"FAIL={fail_count} TOTAL={len(rows)}"
+    )
+    return 1 if fail_count else 0
 
 
 def main() -> int:

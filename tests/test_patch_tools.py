@@ -210,6 +210,29 @@ class PatchToolTests(unittest.TestCase):
         self.assertNotEqual(own_result.returncode, 0)
         self.assertIn("不能与自身冲突", own_result.stdout)
 
+    def test_active_conflict_is_fail(self) -> None:
+        fixture = ManifestFixture(
+            [
+                patch_entry("001", "001-normal.patch"),
+                patch_entry(
+                    "ex01",
+                    "ex01-neon.patch",
+                    depend_on=["arm64-neon"],
+                    conflicts_with=["001"],
+                ),
+            ]
+        )
+        self.addCleanup(fixture.close)
+
+        skipped = self.run_list(fixture)
+        active = self.run_list(fixture, "arm64-neon")
+
+        self.assertIn("ex01\tpatches/ex01-neon.patch\tSKIP", skipped.stdout)
+        self.assertIn(
+            "ex01\tpatches/ex01-neon.patch\tFAIL\tconflict=001",
+            active.stdout,
+        )
+
 
 class ApplyToolTests(unittest.TestCase):
     def setUp(self) -> None:
