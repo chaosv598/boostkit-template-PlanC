@@ -5,28 +5,28 @@ pin_commit: 540242ea0a68926f1b827bf1f9add844f07a427b
 
 patches:
   - id: "001"
-    file: patches/001-example-bootstrap.patch
+    file: 001-example-bootstrap.patch
     author: template@boostkit.example
     date: 2026-07-30
     upstream_status: Inappropriate
     notes: Template-only bootstrap Patch used to demonstrate deterministic replay.
 
   - id: "002"
-    file: patches/002-example-compat.patch
+    file: 002-example-compat.patch
     author: template@boostkit.example
     date: 2026-07-30
     upstream_status: Inappropriate
     notes: Template-only compatibility Patch applied after the bootstrap example.
 
   - id: "003"
-    file: patches/003-example-observability.patch
+    file: 003-example-observability.patch
     author: template@boostkit.example
     date: 2026-07-30
     upstream_status: Inappropriate
     notes: Template-only observability Patch applied after the compatibility example.
 
   - id: ex01
-    file: patches/ex01-example-neon.patch
+    file: ex01-example-neon.patch
     author: template@boostkit.example
     date: 2026-07-30
     upstream_status: Inappropriate
@@ -35,7 +35,7 @@ patches:
       - arm64-neon
 
   - id: ex02
-    file: patches/ex02-example-runtime.patch
+    file: ex02-example-runtime.patch
     author: template@boostkit.example
     date: 2026-07-30
     upstream_status: Inappropriate

@@ -25,7 +25,7 @@ def patch_entry(
 ) -> dict:
     entry = {
         "id": patch_id,
-        "file": f"patches/{file_name}",
+        "file": file_name,
         "author": "template@boostkit.example",
         "date": "2026-07-30",
         "upstream_status": "Inappropriate",
@@ -42,10 +42,10 @@ class ManifestFixture:
     def __init__(self, patches: list[dict]):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
-        patch_dir = self.root / "patches"
-        patch_dir.mkdir()
         for entry in patches:
-            (self.root / entry["file"]).write_text(
+            patch_file = self.root / entry["file"]
+            patch_file.parent.mkdir(parents=True, exist_ok=True)
+            patch_file.write_text(
                 "diff --git a/a b/a\n", encoding="utf-8"
             )
         self.manifest = self.root / "manifest.yaml"
@@ -120,6 +120,17 @@ class PatchToolTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("字典序", result.stdout)
 
+    def test_rejects_nested_patch_directory(self) -> None:
+        nested = patch_entry("001", "001-normal.patch")
+        nested["file"] = "patches/001-normal.patch"
+        fixture = ManifestFixture([nested])
+        self.addCleanup(fixture.close)
+
+        result = self.run_lint(fixture)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("同级纯文件名", result.stdout)
+
     def test_rejects_normal_patch_depend_on(self) -> None:
         fixture = ManifestFixture(
             [patch_entry("001", "001-normal.patch", depend_on=["arm64-neon"])]
@@ -167,18 +178,18 @@ class PatchToolTests(unittest.TestCase):
         )
 
         self.assertEqual(no_features.returncode, 0, no_features.stderr)
-        self.assertIn("001\tpatches/001-normal.patch\tAPPLY", no_features.stdout)
-        self.assertIn("ex01\tpatches/ex01-neon.patch\tSKIP\tmissing=arm64-neon", no_features.stdout)
+        self.assertIn("001\t001-normal.patch\tAPPLY", no_features.stdout)
+        self.assertIn("ex01\tex01-neon.patch\tSKIP\tmissing=arm64-neon", no_features.stdout)
         self.assertIn(
-            "ex02\tpatches/ex02-runtime.patch\tSKIP\tmissing=arm64-neon,kunpeng-runtime",
+            "ex02\tex02-runtime.patch\tSKIP\tmissing=arm64-neon,kunpeng-runtime",
             no_features.stdout,
         )
-        self.assertIn("ex01\tpatches/ex01-neon.patch\tAPPLY", neon_only.stdout)
+        self.assertIn("ex01\tex01-neon.patch\tAPPLY", neon_only.stdout)
         self.assertIn(
-            "ex02\tpatches/ex02-runtime.patch\tSKIP\tmissing=kunpeng-runtime",
+            "ex02\tex02-runtime.patch\tSKIP\tmissing=kunpeng-runtime",
             neon_only.stdout,
         )
-        self.assertIn("ex02\tpatches/ex02-runtime.patch\tAPPLY", all_features.stdout)
+        self.assertIn("ex02\tex02-runtime.patch\tAPPLY", all_features.stdout)
 
     def test_rejects_invalid_conflict_reference(self) -> None:
         missing = ManifestFixture(
@@ -227,9 +238,9 @@ class PatchToolTests(unittest.TestCase):
         skipped = self.run_list(fixture)
         active = self.run_list(fixture, "arm64-neon")
 
-        self.assertIn("ex01\tpatches/ex01-neon.patch\tSKIP", skipped.stdout)
+        self.assertIn("ex01\tex01-neon.patch\tSKIP", skipped.stdout)
         self.assertIn(
-            "ex01\tpatches/ex01-neon.patch\tFAIL\tconflict=001",
+            "ex01\tex01-neon.patch\tFAIL\tconflict=001",
             active.stdout,
         )
 
@@ -250,7 +261,7 @@ class ApplyToolTests(unittest.TestCase):
         self.pin_commit = self.run_git("rev-parse", "HEAD").stdout.strip()
 
         self.version = self.root / "version"
-        self.patch_dir = self.version / "patches"
+        self.patch_dir = self.version
         self.patch_dir.mkdir(parents=True)
         self.make_patch(
             self.patch_dir / "001-normal.patch",

@@ -5,7 +5,8 @@
 ## 文件顺序
 
 ```text
-patches/
+├── manifest.yaml
+├── README.md
 ├── 001-example-bootstrap.patch
 ├── 002-example-compat.patch
 ├── 003-example-observability.patch

@@ -66,8 +66,8 @@ python3 .ci/patch-tools/_patches.py one src/<V>/manifest.yaml ex01
 `_patches.py list` 输出：
 
 ```text
-001  patches/001-example-bootstrap.patch  APPLY  ready
-ex01 patches/ex01-example-neon.patch       SKIP   missing=arm64-neon
+001  001-example-bootstrap.patch  APPLY  ready
+ex01 ex01-example-neon.patch       SKIP   missing=arm64-neon
 ```
 
 实际字段使用 Tab 分隔，便于 Shell 稳定解析。

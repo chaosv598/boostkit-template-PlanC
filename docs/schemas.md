@@ -8,12 +8,11 @@
 src/<Upstream>-<Version>/
 ├── manifest.yaml
 ├── README.md
-└── patches/
-    ├── 001-<name>.patch
-    ├── 002-<name>.patch
-    ├── 003-<name>.patch
-    ├── ex01-<feature>.patch
-    └── ex02-<feature>.patch
+├── 001-<name>.patch
+├── 002-<name>.patch
+├── 003-<name>.patch
+├── ex01-<feature>.patch
+└── ex02-<feature>.patch
 ```
 
 文件名按字典序排列，也按该顺序累计应用。Manifest 中 `patches[]` 的声明顺序必须与文件名字典序一致。
@@ -32,7 +31,7 @@ src/<Upstream>-<Version>/
 | 字段 | 必填 | 说明 |
 |---|:---:|---|
 | `id` | 是 | 普通 Patch 为 `001`；特殊 Patch 为 `ex01` |
-| `file` | 是 | `patches/<id>-<name>.patch` |
+| `file` | 是 | 与 Manifest 同级的 `<id>-<name>.patch` 纯文件名 |
 | `author` | 是 | 责任人 email |
 | `date` | 是 | `YYYY-MM-DD` |
 | `upstream_status` | 是 | Yocto 6 态 |
@@ -67,14 +66,14 @@ pin_commit: 540242ea0a68926f1b827bf1f9add844f07a427b
 
 patches:
   - id: "001"
-    file: patches/001-example-bootstrap.patch
+    file: 001-example-bootstrap.patch
     author: template@boostkit.example
     date: 2026-07-30
     upstream_status: Inappropriate
     notes: Template-only Patch used to demonstrate deterministic replay.
 
   - id: ex01
-    file: patches/ex01-example-neon.patch
+    file: ex01-example-neon.patch
     author: template@boostkit.example
     date: 2026-07-30
     upstream_status: Inappropriate

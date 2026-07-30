@@ -93,8 +93,14 @@ def validate_manifest(path: Path) -> list[str]:
 
         if not (NORMAL_ID_RE.fullmatch(patch_id) or EX_ID_RE.fullmatch(patch_id)):
             errors.append(f"{prefix}: id 必须为 001 或 ex01 形态")
-        if not file_name.startswith("patches/") or ".." in Path(file_name).parts:
-            errors.append(f"{prefix}: file 必须是 patches/ 下的相对路径")
+        if (
+            not file_name
+            or Path(file_name).name != file_name
+            or "/" in file_name
+            or "\\" in file_name
+            or file_name in (".", "..")
+        ):
+            errors.append(f"{prefix}: file 必须是 manifest 同级纯文件名")
         elif Path(file_name).name and not Path(file_name).name.startswith(
             f"{patch_id}-"
         ):

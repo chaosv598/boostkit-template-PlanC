@@ -4,7 +4,7 @@ BoostKit Patch 统一治理模板，采用“单目录、单序列、特性门�
 
 ## 核心约定
 
-- 一个版本目录只有一个 `patches/`。
+- Patch 文件直接与该版本的 `manifest.yaml` 同级。
 - 普通 Patch 使用 `001-*.patch`、`002-*.patch`、`003-*.patch`。
 - 特殊 Patch 使用 `ex01-*.patch`、`ex02-*.patch`。
 - 文件名字典序是唯一应用顺序。
@@ -27,10 +27,9 @@ boostkit-template/
 ├── src/<Upstream>-<Version>/
 │   ├── manifest.yaml
 │   ├── README.md
-│   └── patches/
-│       ├── 001-<name>.patch
-│       ├── 002-<name>.patch
-│       └── ex01-<feature>.patch
+│   ├── 001-<name>.patch
+│   ├── 002-<name>.patch
+│   └── ex01-<feature>.patch
 └── tests/test_patch_tools.py
 ```
 

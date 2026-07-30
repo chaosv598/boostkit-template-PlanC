@@ -5,7 +5,7 @@ ordered sequence, and feature-gated special patches.
 
 ## Rules
 
-- Each upstream version owns one `patches/` directory.
+- Patch files live directly beside the version's `manifest.yaml`.
 - Normal patches use `001-*.patch`, `002-*.patch`, and `003-*.patch`.
 - Special patches use `ex01-*.patch`, `ex02-*.patch`, and so on.
 - Filename lexicographic order is the only application order.
@@ -27,7 +27,8 @@ boostkit-template/
 ├── src/<Upstream>-<Version>/
 │   ├── manifest.yaml
 │   ├── README.md
-│   └── patches/
+│   ├── 001-<name>.patch
+│   └── ex01-<feature>.patch
 └── tests/test_patch_tools.py
 ```
 
