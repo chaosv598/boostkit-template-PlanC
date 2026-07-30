@@ -31,7 +31,6 @@ boostkit-template/
 │   ├── 001-<name>.patch
 │   ├── 002-<name>.patch
 │   └── ex01-<feature>.patch
-└── tests/test_patch_tools.py
 ```
 
 工具放在 `.ci/patch-tools/`，而不是真正的 `.git/`。`.git/` 不能被版本控制，CI 全新 checkout 时无法获得其中脚本。

@@ -31,7 +31,6 @@ boostkit-template/
 │   ├── README.md
 │   ├── 001-<name>.patch
 │   └── ex01-<feature>.patch
-└── tests/test_patch_tools.py
 ```
 
 The tools live under `.ci/patch-tools/`, not `.git/`. Git does not track
