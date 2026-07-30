@@ -1,0 +1,11 @@
+diff --git a/example.sh b/example.sh
+--- a/example.sh
++++ b/example.sh
+@@ -6,6 +6,7 @@ make
+ popd
+ 
+ # Download the dataset
++# BoostKit template 002: compatibility hook example
+ mkdir -p ./data/gist
+ if [ ! -f ./data/gist/gist.tar.gz ]; then
+     wget -P ./data/gist ftp://ftp.irisa.fr/local/texmex/corpus/gist.tar.gz

@@ -1,26 +1,33 @@
-# RaBitQ-Library · BoostKit 鲲鹏适配
+# RaBitQ-Library 示例版本
 
-本目录管理 **RaBitQ (NTU SIGMOD 2024)** 的 2 个鲲鹏特定 patch，自包含（manifest + patch 在本目录）。
+本目录用于演示单目录 Patch 治理，不代表 RaBitQ 的正式业务补丁。
 
-schema 字段定义见仓根 [docs/schemas.md](../../docs/schemas.md)。本 README 只记本版本的具体清单 + 演进步骤。
+## 文件顺序
 
-## 本版本 patch 清单
-
-| layer | id | file | upstream_status | self_contained |
-|-------|----|------|-----------------|:---:|
-| extras | `neq` | `extras/neq/0001-neon-simd.patch` (NEON + FP16 + LUT) | Inappropriate | false |
-| extras | `eqv` | `extras/eqv/0001-soar.patch` (SOAR + ML nprobe) | Inappropriate | false |
-| series | `0001-series-fake` | `series/0001-series-fake.patch` (demo) | Pending | — |
-
-2 extras 是 `diff -uNr` 快照式 patch，需配合 RabitQ 完整 build 链使用 —— 故 `self_contained: false`，CI 默认跳过。
-
-## 加新版本（cp-r 整目录）
-
-```bash
-cp -r src/RaBitQ-Library src/RaBitQ-Library-v2
-# 改 src/RaBitQ-Library-v2/manifest.yaml 的 upstream_url / release / pin_commit
+```text
+patches/
+├── 001-example-bootstrap.patch
+├── 002-example-compat.patch
+├── 003-example-observability.patch
+├── ex01-example-neon.patch
+└── ex02-example-runtime.patch
 ```
 
-## 加新 extra / series patch
+- `001`、`002`、`003` 默认按字典序累计应用。
+- `ex01` 需要 `arm64-neon`。
+- `ex02` 需要 `arm64-neon` 和 `kunpeng-runtime`。
 
-按 [schemas.md §2/§3](../../docs/schemas.md) 在 manifest.yaml 追加条目，再 `bash tools/apply_patch.sh verify` 校验。
+## 验证组合
+
+```bash
+# 3 APPLY / 2 SKIP
+bash .ci/patch-tools/apply_patch.sh verify
+
+# 4 APPLY / 1 SKIP
+ENABLED_FEATURES=arm64-neon \
+  bash .ci/patch-tools/apply_patch.sh verify
+
+# 5 APPLY / 0 SKIP
+ENABLED_FEATURES=arm64-neon,kunpeng-runtime \
+  bash .ci/patch-tools/apply_patch.sh verify
+```

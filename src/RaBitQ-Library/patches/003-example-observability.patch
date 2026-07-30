@@ -1,0 +1,11 @@
+diff --git a/example.sh b/example.sh
+--- a/example.sh
++++ b/example.sh
+@@ -13,6 +13,7 @@ fi
+ tar -xzvf ./data/gist/gist.tar.gz -C ./data/gist
+ 
+ # indexing and querying for symqg
++# BoostKit template 003: observability hook example
+ ./bin/symqg_indexing ./data/gist/gist_base.fvecs 32 400 ./data/gist/symqg_32.index
+ 
+ ./bin/symqg_querying ./data/gist/symqg_32.index ./data/gist/gist_query.fvecs ./data/gist/gist_groundtruth.ivecs

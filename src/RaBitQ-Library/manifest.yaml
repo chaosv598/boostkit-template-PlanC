@@ -1,45 +1,45 @@
-# BoostKit RaBitQ · 双层形态 manifest 模板
-# 字段定义见 docs/schemas.md
+# BoostKit single-sequence Patch manifest example.
 upstream_url: https://github.com/VectorDB-NTU/RaBitQ-Library
 release: snapshot-2026-07-25
 pin_commit: 540242ea0a68926f1b827bf1f9add844f07a427b
 
-series:
-  - id: 0001-series-fake
-    file: series/0001-series-fake.patch
-    author: chaosv598@users.noreply.github.com
-    date: 2026-07-25
-    upstream_status: Pending
-    upstream_pr: https://github.com/VectorDB-NTU/RaBitQ-Library/pull/TBD
-    notes: |
-      演示用 series patch — 给 example.sh 加一行注释，验证 dry-run 路 A。
-      上游 NTU 真实 PR 链接待填。
+patches:
+  - id: "001"
+    file: patches/001-example-bootstrap.patch
+    author: template@boostkit.example
+    date: 2026-07-30
+    upstream_status: Inappropriate
+    notes: Template-only bootstrap Patch used to demonstrate deterministic replay.
 
-extras:
-  - extra_id: neq
-    title: 鲲鹏非等价索引优化
-    self_contained: false
-    author: codesheepchen@huawei.com
-    date: 2026-02-06
-    upstream:
-      upstream_status: Inappropriate
-      notes: |
-        鲲鹏非等价索引优化 (neq): 引入 FP16 精度 + NEON SIMD 向量化
-        + 汇编级 LUT 加速, 提升 ARM64 上非等价索引场景性能。
-        上游 NTU 仅支持 x86_64 AVX2, 鲲鹏特定 NEON 优化上游不收。
-    files:
-      - file: extras/neq/0001-neon-simd.patch
+  - id: "002"
+    file: patches/002-example-compat.patch
+    author: template@boostkit.example
+    date: 2026-07-30
+    upstream_status: Inappropriate
+    notes: Template-only compatibility Patch applied after the bootstrap example.
 
-  - extra_id: eqv
-    title: 鲲鹏等价索引优化
-    self_contained: false
-    author: codesheepchen@huawei.com
-    date: 2026-02-25
-    upstream:
-      upstream_status: Inappropriate
-      notes: |
-        鲲鹏等价索引优化 (eqv): 在 neq 基础上加入 SOAR 溢出向量分配
-        + ML 自适应 nprobe 调整, 等价索引场景性能进一步提升。
-        强依赖鲲鹏硬件特性, 上游不收。
-    files:
-      - file: extras/eqv/0001-soar.patch
+  - id: "003"
+    file: patches/003-example-observability.patch
+    author: template@boostkit.example
+    date: 2026-07-30
+    upstream_status: Inappropriate
+    notes: Template-only observability Patch applied after the compatibility example.
+
+  - id: ex01
+    file: patches/ex01-example-neon.patch
+    author: template@boostkit.example
+    date: 2026-07-30
+    upstream_status: Inappropriate
+    notes: Template-only ARM64 NEON Patch used to demonstrate feature-gated application.
+    depend_on:
+      - arm64-neon
+
+  - id: ex02
+    file: patches/ex02-example-runtime.patch
+    author: template@boostkit.example
+    date: 2026-07-30
+    upstream_status: Inappropriate
+    notes: Template-only runtime Patch requiring both ARM64 NEON and Kunpeng runtime features.
+    depend_on:
+      - arm64-neon
+      - kunpeng-runtime
