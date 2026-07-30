@@ -1,69 +1,67 @@
-# Introduction to RaBitQ
+# BoostKit Patch Template
 
-## Latest Updates
+A reusable BoostKit Patch governance template based on one directory, one
+ordered sequence, and feature-gated special patches.
 
-- 2026.03.30: The RaBitQ optimization patches were released on the Gitcode platform, implementing both equivalence and non-equivalence index optimizations.
+## Rules
 
-## Project Introduction
+- Each upstream version owns one `patches/` directory.
+- Normal patches use `001-*.patch`, `002-*.patch`, and `003-*.patch`.
+- Special patches use `ex01-*.patch`, `ex02-*.patch`, and so on.
+- Filename lexicographic order is the only application order.
+- A special patch declares required business features in `depend_on`.
+- CI provides available features through `ENABLED_FEATURES`.
+- A special patch is applied when every dependency is available; otherwise it
+  is reported as SKIP with the missing features.
 
-RaBitQ is a randomized binary quantization method (SIGMOD 2024) proposed by the NTU team for high-dimensional vector approximate nearest neighbor (ANN) search. It quantizes a D-dimensional vector into a D-bit binary string and provides a theoretical error bound. The original implementation relies on the x86_64 AVX2 instruction set. Kunpeng optimizations are based on deep, architecture-specific intrusive modifications to the open-source RaBitQ codebase. This extends its support to the AArch64 architecture, introducing performance optimizations and functional enhancements. These include FP16 precision optimization, NEON SIMD vectorization, assembly-level Lookup Table (LUT) acceleration, Spilling with Orthogonality-Amplified Residuals (SOAR) spilled vector assignment, and ML-based adaptive nprobe.
+## Layout
 
-## Directory Structure
-
+```text
+boostkit-template/
+├── .ci/patch-tools/
+│   ├── apply_patch.sh
+│   ├── _patches.py
+│   └── lint.py
+├── .github/workflows/patch-verify.yml
+├── docs/
+├── src/<Upstream>-<Version>/
+│   ├── manifest.yaml
+│   ├── README.md
+│   └── patches/
+└── tests/test_patch_tools.py
 ```
-rabitq/
-├── docs/      // schemas.md (schema authority) + usage.md (script usage)
-├── tools/     // apply_patch.sh (★ single entry) + _patches.py + lint.py
-└── src/<V>/   // one upstream version per subdir (self-contained: manifest.yaml + series/ + extras/<id>/)
-```
 
-## Patch Governance Single Entry
+The tools live under `.ci/patch-tools/`, not `.git/`. Git does not track
+`.git/`, so scripts stored there are unavailable in a fresh CI checkout.
+
+## Quick start
 
 ```bash
-bash tools/apply_patch.sh verify      # CI default: lint + dual-run dry-run + status
-bash tools/apply_patch.sh lint        # manifest lint only
-bash tools/apply_patch.sh apply       # apply to /tmp/rabitq-build
-bash tools/apply_patch.sh apply-layer <id>   # single layer: series<id> or extra<extra_id>
+python3 -m pip install PyYAML
+bash .ci/patch-tools/apply_patch.sh lint
+bash .ci/patch-tools/apply_patch.sh verify
 
-DISABLED_EXTRAS=neq bash tools/apply_patch.sh apply   # runtime-disable extras
+ENABLED_FEATURES=arm64-neon \
+  bash .ci/patch-tools/apply_patch.sh verify
+
+ENABLED_FEATURES=arm64-neon,kunpeng-runtime \
+  bash .ci/patch-tools/apply_patch.sh verify
 ```
 
-Full schema: [docs/schemas.md](docs/schemas.md). Script details: [docs/usage.md](docs/usage.md).
+The included RaBitQ example contains three normal patches and two special
+patches. With no features, the result is 3 APPLY / 2 SKIP. With both example
+features, all five patches are applied cumulatively.
 
-This template only governs patch metadata + replay, not compile. For the actual build, use the upstream [VectorDB-NTU/RaBitQ-Library](https://github.com/VectorDB-NTU/RaBitQ-Library) build flow.
+See [docs/schemas.md](docs/schemas.md) and
+[docs/usage.md](docs/usage.md) for the complete contract.
 
-## Release Notes
+## Scope
 
-For details about the version updates of RaBitQ, see [Release Notes](docs/en/release_notes.md).
-
-## Documents
-
-| Resource Type| Resource Name | Resource Description |
-| ------ | ------------- | ------------ |
-| Document    | [Release Notes](docs/en/release_notes.md)        | Provides version information for both equivalence and non-equivalence index optimization patches.                          |
-| Document    | [Quick Start](docs/en/quick_start.md)        | Provides the overview, prerequisites, patch application methods, and basic usage guide.                          |
-| Document    | [Feature Introduction](docs/en/feature_introduction.md)    | Details the technical components of equivalence and non-equivalence index optimizations, including the SOAR algorithm, the ML-based adaptive nprobe mechanism, and the overall technical architecture.     |
-| Document    | [API Reference](docs/en/api_reference.md)    | Details all API modifications across Python scripts, C++ command lines, the IVFRN class, and Shell scripts, relative to the original open-source RaBitQ code.|
-| Document    | [User Guide](docs/en/user_guide.md)| Provides detailed instructions for the `run.sh` test script, including parameter descriptions, dataset configurations, search parameters, environment setups, and usage examples.         |
-
-## Disclaimer
-
-This code repository contributes to the RaBitQ open-source components. It strictly adheres to the coding style and methods, as well as security design of the native open-source software. Any vulnerability and security issues of the software shall be resolved by the corresponding upstream communities according to their response mechanisms. Please pay attention to the notifications and version updates released by the upstream communities. The Kunpeng computing community does not assume any responsibility for software vulnerabilities and security issues.
+The template validates metadata, lifecycle evidence, ordering, feature
+dependencies, and replay against a pinned upstream commit. Business builds,
+functional tests, performance tests, and releases remain owned by the
+downstream repository.
 
 ## License
 
-This project is licensed under the Apache License 2.0. For details, see [LICENSE](docs/en/LICENSE).
-
-The documents of this project are licensed under CC-BY 4.0. For details, see [LICENSE](docs/en/LICENSE).
-
-## Contribution Statement
-
-We welcome your contributions to the community. If you have any questions/suggestions or want to provide feedback on feature requirements and bug reports, you can submit [issues](https://gitcode.com/boostkit/community/blob/master/docs/contributor/issue-submit.md). For details, see [Contribution Guideline](https://gitcode.com/boostkit/community/blob/master/docs/contributor/contributing.md). You are also welcome to share insights in the [Discussions](https://gitcode.com/boostkit/community/discussions). Thank you for your support.
-
-## Acknowledgments
-
-RaBitQ is jointly developed by the following Huawei department:
-
-- Kunpeng Computing BoostKit Development Dept
-
-Thank you to everyone in the community for your PRs. We warmly welcome contributions to RaBitQ!
+Apache License 2.0. See [LICENSE](LICENSE).

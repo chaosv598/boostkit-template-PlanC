@@ -1,126 +1,106 @@
-# Schema
+# Manifest Schema
 
-> **manifest 是 patch 元数据单一权威**。`series[]`（总是 on）+ `extras[]`（按 self_contained 单开关决定是否裸跑）。CI 双跑验可重放。编译由各仓自带脚本负责。
+`manifest.yaml` 是每个上游版本 Patch 元数据的单一权威。
 
 ## 目录
 
+```text
+src/<Upstream>-<Version>/
+├── manifest.yaml
+├── README.md
+└── patches/
+    ├── 001-<name>.patch
+    ├── 002-<name>.patch
+    ├── 003-<name>.patch
+    ├── ex01-<feature>.patch
+    └── ex02-<feature>.patch
 ```
-boostkit-rabitq/
-├── tools/                 # apply_patch.sh (单入口) + _patches.py + lint.py
-├── docs/                  # schemas.md + usage.md
-└── src/<V>/               # 一个上游版本一个子目录（自包含）
-    ├── manifest.yaml      # ★ 唯一权威
-    ├── series/            # 普通 patches (总是 on, 字典序 apply)
-    └── extras/<id>/       # 鲲鹏特定 extras (可单独开关, 每 extra 一个子目录)
+
+文件名按字典序排列，也按该顺序累计应用。Manifest 中 `patches[]` 的声明顺序必须与文件名字典序一致。
+
+## 顶层字段
+
+| 字段 | 必填 | 说明 |
+|---|:---:|---|
+| `upstream_url` | 是 | 上游 Git 地址；本地测试可使用本地仓路径 |
+| `release` | 是 | 上游 tag 或 `snapshot-YYYY-MM-DD`；禁止漂移分支名 |
+| `pin_commit` | 是 | 40 字符小写 commit SHA |
+| `patches` | 是 | 非空 Patch 列表 |
+
+## Patch 通用字段
+
+| 字段 | 必填 | 说明 |
+|---|:---:|---|
+| `id` | 是 | 普通 Patch 为 `001`；特殊 Patch 为 `ex01` |
+| `file` | 是 | `patches/<id>-<name>.patch` |
+| `author` | 是 | 责任人 email |
+| `date` | 是 | `YYYY-MM-DD` |
+| `upstream_status` | 是 | Yocto 6 态 |
+| `notes` | 条件 | Backport、Denied、Inappropriate 必填，至少 10 字符 |
+| `upstream_pr` | 条件 | Pending、Submitted 必填 URL |
+| `merged_commit` | 条件 | Accepted 必填 40 字符 SHA |
+| `conflicts_with` | 否 | 已知冲突 Patch ID 列表 |
+
+## 特殊 Patch 字段
+
+`exNN` Patch 必须增加：
+
+```yaml
+depend_on:
+  - arm64-neon
+  - kunpeng-runtime
 ```
 
-## 1. 顶层
+`depend_on` 表达业务运行前置特性，不表达 Patch 顺序：
 
-| 字段 | 必填 | 语义 |
-|------|:--:|------|
-| `upstream_url` | 是 | 上游 git URL |
-| `release` | 是 | 上游 tag 或 `snapshot-YYYY-MM-DD`；**禁止**写 `main`/`develop`/`master` |
-| `pin_commit` | 是 | 40-char SHA，与 release 对应的固定 commit |
+- 特性由 `ENABLED_FEATURES` 逗号分隔环境变量提供。
+- 依赖全部满足：APPLY。
+- 任一依赖缺失：SKIP，并输出 `missing=<feature>`。
+- 普通数字 Patch 不允许声明 `depend_on`。
 
-> ~~`install`~~ 已废弃（编译由各仓自带脚本负责）。
-
-## 2. series[] + extras[] 字段对照
-
-> **设计原则**：extras 是 series 的**超集**。同名字段 = 同语义、同必填规则、同校验。extras 多出来的 4 个字段是 `extra_id` / `self_contained` / `title` / `files[]`，没有 series 独占字段。
-
-| 字段 | series | extras | 必填 | 备注 |
-|------|:------:|:------:|:--:|------|
-| `id` ¹ | ✓ | 改名为 `extra_id` | 是 | kebab-case |
-| `file` ² | `file` | 改名为 `files[]` | 是 | 详见下方 |
-| `author` | `author` | **同 series** | 是 | email |
-| `date` | `date` | **同 series** | 是 | YYYY-MM-DD |
-| `upstream_status` ³ | `upstream_status` | **同 series** | 是 | 6 态 enum（见 §4） |
-| `notes` | `notes` | **同 series** | 条件 | Inappropriate/Denied/Backport 必填，≥10 字符 |
-| `upstream_pr` | `upstream_pr` | **同 series** | 条件 | Pending/Submitted 必填（URL） |
-| `merged_commit` | `merged_commit` | **同 series** | 条件 | Accepted 必填（40-char SHA） |
-| `title` ¹ | — | `title` | 是（extras） | 人类可读描述 |
-| `self_contained` ¹ | — | `self_contained` | 是（extras） | 详见下方 |
-
-**注释**：
-
-- **¹ extras 独有字段**：`extra_id`（同时是子目录名）、`title`、`self_contained` 是 extras 必填；series 没有。
-- **² patch files 形态不同**：
-  - series：`file: series/0001-x.patch`（单文件 string）
-  - extras：`files: [{file: extras/neq/0001-x.patch}, ...]`（多文件 list，字典序 apply）
-- **³ extras 字段在 `upstream.` 嵌套块下**：extras 的 `upstream_status` / `notes` / `upstream_pr` / `merged_commit` 字段写在 `upstream:` 子块里（语义和 series 完全相同）。**extras patch 无独立 status**——继承所属 extra 的 `upstream.upstream_status`。
-- **apply 顺序**：完全由 manifest 声明顺序 + 文件名 `0001-` `0002-` 字典序决定（与 Buildroot / OpenWrt / Yocto 业界惯例一致）。
-**`self_contained` 语义**：
-
-- `true` = 纯 upstream 可重放（CI 默认 apply）
-- `false` = 依赖下游 build（CI 默认跳过，`BOOTSTRAP_NON_BUILDABLE=1` 强制包含）
-- 运行时覆盖：`DISABLED_EXTRAS=neq,eqv` env（无视 `self_contained: true`）
-
-## 3. 完整 schema 示例
-
-**顶层**：
+## 完整示例
 
 ```yaml
 upstream_url: https://github.com/VectorDB-NTU/RaBitQ-Library
-release: snapshot-2026-07-25                # 上游 tag 或 snapshot-YYYY-MM-DD
+release: snapshot-2026-07-25
 pin_commit: 540242ea0a68926f1b827bf1f9add844f07a427b
+
+patches:
+  - id: "001"
+    file: patches/001-example-bootstrap.patch
+    author: template@boostkit.example
+    date: 2026-07-30
+    upstream_status: Inappropriate
+    notes: Template-only Patch used to demonstrate deterministic replay.
+
+  - id: ex01
+    file: patches/ex01-example-neon.patch
+    author: template@boostkit.example
+    date: 2026-07-30
+    upstream_status: Inappropriate
+    notes: Template-only ARM64 Patch used to demonstrate feature gating.
+    depend_on:
+      - arm64-neon
 ```
 
-**series[] entry**（普通 patch · 总是 on）：
+## Upstream 状态
 
-```yaml
-series:
-  - id: 0001-series-fake                     # kebab-case
-    file: series/0001-series-fake.patch      # 相对 manifest 目录
-    author: chaosv598@users.noreply.github.com
-    date: 2026-07-25
-    upstream_status: Pending                 # 6 态 enum
-    upstream_pr: https://github.com/VectorDB-NTU/RaBitQ-Library/pull/TBD
-    notes: |                                  # Pending 不要求 notes；这里演示多行写法
-      演示用 series patch — 给 example.sh 加一行注释, 验证 dry-run 路 A。
-      上游 NTU 真实 PR 链接待填。
-    # (apply 顺序由 manifest 声明顺序决定; 用 0001- 编号控制逻辑先后)
-```
-
-**extras[] entry**（鲲鹏特定 extra · 每 extra 一个子目录）：
-
-```yaml
-extras:
-  - extra_id: neq                            # 子目录名 = extras/neq/
-    title: 鲲鹏非等价索引优化
-    self_contained: false                    # 鲲鹏特定 NEON 优化, 依赖下游 build
-    author: codesheepchen@huawei.com
-    date: 2026-02-06
-    upstream:                                # ← series 的字段在这里
-      upstream_status: Inappropriate
-      notes: |
-        鲲鹏非等价索引优化 (neq): 引入 FP16 精度 + NEON SIMD 向量化
-        + 汇编级 LUT 加速, 提升 ARM64 上非等价索引场景性能。
-        上游 NTU 仅支持 x86_64 AVX2, 鲲鹏特定 NEON 优化上游不收。
-    files:                                   # ← series 的 file 在这里是 list
-      - file: extras/neq/0001-neon-simd.patch
-```
-
-## 4. upstream_status 6 态
-
-| status | 联动必填 |
-|--------|----------|
-| `Pending` / `Submitted` | `upstream_pr` |
-| `Backport` / `Denied` / `Inappropriate` | `notes` |
+| 状态 | 联动必填 |
+|---|---|
+| `Pending`、`Submitted` | `upstream_pr` |
+| `Backport`、`Denied`、`Inappropriate` | `notes` |
 | `Accepted` | `merged_commit` |
 
-## 5. 校验
+## 冲突规则
 
-| 命令 | 作用 |
-|------|------|
-| `bash tools/apply_patch.sh verify` | lint + series dry-run + extras dry-run + status（CI 默认） |
-| `bash tools/apply_patch.sh lint` | 只校验 manifest 字段 |
-| `bash tools/apply_patch.sh apply` | 真 apply 到 `/tmp/rabitq-build` |
-| `bash tools/apply_patch.sh apply-layer <id>` | 单层：`series<id>` 或 `extra<extra_id>` |
+- `conflicts_with` 只能引用当前 Manifest 中存在的 Patch ID。
+- Patch 不能与自身冲突。
+- 冲突声明错误属于 Schema 错误，CI 立即失败。
 
-退出码：`0` 成功 / `1` 失败 / `2` upstream 缺失。
+## 退出语义
 
-## 6. 治理边界
+- `APPLY`：依赖满足且 Patch 成功应用。
+- `SKIP`：特殊 Patch 缺少业务特性；不计为 PASS。
+- `FAIL`：Schema、文件、clone、checkout、冲突或 apply 失败。
 
-样板只管 patch 元数据 + patch 可重放。**不掺合编译**（autotools/cmake/bazel/python/AOSP 都不在样板范围）。真编译用上游自带入口（`build.sh`/`make`/`bazel build`/...）。
-
-**业务约束**：patch 文件不被 lint/CI/任何脚本读取。
+旧 `series[]`、`extras[]` 和 `self_contained` 不再兼容。
